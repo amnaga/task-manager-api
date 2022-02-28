@@ -11,7 +11,7 @@ router.post('/tasks', auth, async (req,res) => {
     })
     try{
         await task.save()
-        res.status(201).send(task)
+        res.status(201).send({message:"Task has been successfully added!",data:task})
     }catch(e){
         res.status(400).send(e)
     }
@@ -44,6 +44,8 @@ router.get('/tasks', auth, async (req,res) => {
                 sort
             }
         })
+        if(req.user.tasks == "")
+            res.status(400).send({message:"No tasks at this moment!"})
         res.send(req.user.tasks) 
     }catch(e){
         res.status(500).send()

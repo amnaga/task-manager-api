@@ -22,10 +22,15 @@ router.post('/apiusers/login', async (req,res) => {
 router.post('/apiusers/register', async (req, res) => {
     const user = new User(req.body)
     try{
-        await user.save()
-        // sendWelcomeEmail(user.email, user.name)
-        const token = await user.generateAuthToken()
-        res.status(201).send({user})
+        const userexist = await User.findOne({email:req.body.email})
+        if(!userexist){
+            await user.save()
+            // sendWelcomeEmail(user.email, user.name)
+            const token = await user.generateAuthToken()
+            res.status(201).send({user})
+        }else{
+            res.status(400).send({message:"Email already been taken!"})    
+        }
     } catch(e){
         res.status(400).send(e)
     }
@@ -57,8 +62,8 @@ router.get('/apiusers/:id', auth, async (req,res) => {
     // })
 })
 
-router.patch('/apiusers/:id', auth, async (req, res) => {
-    const _id = req.params.id
+router.patch('/apiusers/update', auth, async (req, res) => {
+    const _id = req.user.id
     const updates = Object.keys(req.body)
     const allowedUpdates = ["name","email","password","age"]
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update))
@@ -67,7 +72,8 @@ router.patch('/apiusers/:id', auth, async (req, res) => {
     }
     try{
         // const user = await User.findByIdAndUpdate(_id, req.body, { new: true, runValidators:true}) 
-        const user = await User.findById(_id)
+        // const user = await User.findById(_id)
+        const user = await req.user
         updates.forEach((update) => user[update] = req.body[update])
         await user.save()
         if(!user) {
@@ -79,14 +85,14 @@ router.patch('/apiusers/:id', auth, async (req, res) => {
     }
 })
 
-router.delete('/apiusers/:id',auth, async (req,res) => {
+router.delete('/apiusers/delete',auth, async (req,res) => {
     try{
-        const user = await User.findByIdAndDelete(req.params.id)
+        const user = await User.findByIdAndDelete(req.user.id)
         if(!user){
             res.status(404).send({error:'No user found!'})
         }
         // res.send(user)
-        res.status(201).send({message:'User has deleted successfully!'})
+        res.status(200).send({message:'User has deleted successfully!'})
     }catch(e){
         return res.status(500).send(e)
     }
@@ -129,8 +135,7 @@ router.post("/apiusers/me/avatars", auth, upload.single('avatars'), async (req,r
     const buffer = await sharp(req.file.buffer).resize({width:250,height:250}).png().toBuffer()
     req.user.avatar = buffer;
     await req.user.save();
-    //How to display image to browser
-    res.send(req.user);
+    res.status(200).send({message:"Your profile image updated successfully!"});
 },(error, req, res, next) => {
     res.status(400).send({message:error.message});
 })
